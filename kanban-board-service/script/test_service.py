@@ -1,16 +1,18 @@
 import sqlite3
-import requests
-import pytest
 from datetime import datetime
+import pytest
+import requests
 
 DATABASE_LOCATION = '../data/kanban-board.db'
-#DATABASE_LOCATION = 'assignments/DominikNoeth/data/kanban-board.db'
 BASE_URI = 'http://0.0.0.0:8080/api/'
 
 
 @pytest.fixture(scope="module")
 def db_connection():
-    conn = sqlite3.connect(DATABASE_LOCATION)
+    try:
+      conn = sqlite3.connect(DATABASE_LOCATION)
+    except sqlite3.OperationalError as e:
+      pytest.skip(str(e))
     yield conn
     conn.close()
 

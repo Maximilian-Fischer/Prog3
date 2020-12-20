@@ -79,7 +79,7 @@ for d in */ ; do
     servicePid=$!
     sleep 1
 
-    pytest -s -v $pytestScript | tee "pytest.log"
+    pytest -s -v -rs $pytestScript | tee "pytest.log"
 
     sleep 1
     kill $servicePid
