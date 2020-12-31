@@ -1,48 +1,16 @@
-import sqlite3
-from datetime import datetime
+
 import pytest
 import requests
 
-DATABASE_LOCATION = '../data/kanban-board.db'
 BASE_URI = 'http://0.0.0.0:8080/api/'
 
 
-@pytest.fixture(scope="module")
-def db_connection():
+@pytest.fixture(autouse=True)
+def check_service():
     try:
-      conn = sqlite3.connect(DATABASE_LOCATION)
-    except sqlite3.OperationalError as e:
-      pytest.skip(str(e))
-    yield conn
-    conn.close()
-
-@pytest.fixture
-def db_with_data(db_connection):
-    clear_database(db_connection)
-    create_dummy_data(db_connection)
-    yield db_connection
-    clear_database(db_connection)
-
-def clear_database(db_conn):
-  cursor = db_conn.cursor()
-  cursor.execute("DELETE FROM column")
-  cursor.execute("DELETE FROM item")
-  db_conn.commit()
-
-def create_dummy_data(db_conn):
-  cursor = db_conn.cursor()
-
-  columns = [ (1, "prepare", 1),
-              (2, "running", 2),
-              (3, "finished", 3) ]
-  items = [ (1, "in plan", datetime.now(), 1 , 1),
-            (2, "running task 1", datetime.now(), 1, 2),
-            (3, "running task 2", datetime.now(), 2, 2)]
-
-  cursor.executemany("INSERT INTO column VALUES(?, ?, ?)", columns)
-  cursor.executemany("INSERT INTO item VALUES (?, ?, ?, ?, ?)", items)
-
-  db_conn.commit()
+        requests.get(BASE_URI + 'board')
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        pytest.xfail("service is down")
 
 def get_column_by_id(column_id, db_conn):
   cursor = db_conn.cursor()
@@ -69,6 +37,7 @@ def get_item_by_id(item_id, db_conn):
     result = (None, None)
 
   return result
+
 
 @pytest.mark.skip(reason="already implemented in template code")
 def test_board_get(db_with_data):
@@ -119,7 +88,6 @@ def test_columns_post(db_with_data):
   resp_body.pop('items', None)
   assert posted_colum == resp_body
 
-
 def test_columns_get(db_with_data):
   COLUMN_ID = 2
   resp = requests.get(BASE_URI + 'board/columns/' + str(COLUMN_ID))
@@ -131,6 +99,7 @@ def test_columns_get(db_with_data):
   assert resp_body.get('position') == 2
   assert len(resp_body.get('items')) == 2
 
+# @pytest.mark.skip(reason="service crashes")
 def test_columns_get_wrong(db_with_data):
   WRONG_COLUMN_ID = 99
   resp = requests.get(BASE_URI + 'board/columns/' + str(WRONG_COLUMN_ID))
@@ -189,7 +158,7 @@ def test_items_get_all(db_with_data):
   assert resp_body[0].get('title') == 'running task 1'
   assert resp_body[1].get('title') == 'running task 2'
 
-@pytest.mark.skip(reason="leads to crashes in most of the applications")
+#@pytest.mark.skip(reason="leads to crashes in most of the applications")
 def test_items_get_empty_column(db_with_data):
   resp = requests.get(BASE_URI + 'board/columns/3/items')
   assert resp.status_code == 200
@@ -223,6 +192,7 @@ def test_items_get(db_with_data):
   assert resp_body.get('position') == 1
   assert len(resp_body.get('timestamp')) > 0
 
+# @pytest.mark.skip(reason="service crashes")
 def test_items_get_wrong(db_with_data):
   WRONG_ITEM_ID = 99
   resp = requests.get(BASE_URI + 'board/columns/2/items/' + str(WRONG_ITEM_ID))

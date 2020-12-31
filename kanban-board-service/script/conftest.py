@@ -1,4 +1,9 @@
- 
+import sqlite3 
+import pytest
+from datetime import datetime
+
+DATABASE_LOCATION = 'data/kanban-board.db'
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     print('\n')
     tests_passed = 0
@@ -21,3 +26,40 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     print('=========================================')
     print('points reached in assignment: ' + str(assignmentPoints))
     print('=========================================')
+
+@pytest.fixture(scope="module")
+def db_connection():
+    try:
+      conn = sqlite3.connect(DATABASE_LOCATION)
+    except sqlite3.OperationalError as e:
+      pytest.skip(str(e))
+    yield conn
+    conn.close()
+
+@pytest.fixture
+def db_with_data(db_connection):
+    clear_database(db_connection)
+    create_dummy_data(db_connection)
+    yield db_connection
+    clear_database(db_connection)
+
+def clear_database(db_conn):
+  cursor = db_conn.cursor()
+  cursor.execute("DELETE FROM column")
+  cursor.execute("DELETE FROM item")
+  db_conn.commit()
+
+def create_dummy_data(db_conn):
+  cursor = db_conn.cursor()
+
+  columns = [ (1, "prepare", 1),
+              (2, "running", 2),
+              (3, "finished", 3) ]
+  items = [ (1, "in plan", datetime.now(), 1 , 1),
+            (2, "running task 1", datetime.now(), 1, 2),
+            (3, "running task 2", datetime.now(), 2, 2)]
+
+  cursor.executemany("INSERT INTO column VALUES(?, ?, ?)", columns)
+  cursor.executemany("INSERT INTO item VALUES (?, ?, ?, ?, ?)", items)
+
+  db_conn.commit()
